@@ -1,0 +1,14 @@
+.env
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.session
+*.session-journal
+.DS_Store
+.idea/
+.qodo/
+.claude/
+supabase/.temp/
+lumi-start-claude.sh
