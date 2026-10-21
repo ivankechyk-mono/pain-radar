@@ -1,12 +1,16 @@
 import os
+from datetime import datetime, timedelta, timezone
+
 import pandas as pd
 import psycopg2
 import streamlit as st
 from dotenv import load_dotenv
 
+from src.pipeline import run_collect, run_classify
+
 load_dotenv()
 
-st.set_page_config(page_title="Pain Radar", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="Pain Radar", layout="wide", initial_sidebar_state="expanded")
 
 st.markdown("""
 <style>
@@ -137,6 +141,32 @@ COMPETITOR_LABEL = {
     "raiffeisen": ("🟡 Райффайзен",  "#F9A825"),
     "sense":      ("🔴 Sense Bank",  "#B71C1C"),
 }
+
+PERIOD_OPTIONS = {
+    "Сьогодні": timedelta(days=1),
+    "Тиждень": timedelta(days=7),
+    "Місяць": timedelta(days=30),
+    "Весь час": None,
+}
+
+with st.sidebar:
+    st.markdown("### 🔄 Оновити дані")
+    period_label = st.selectbox("Період класифікації", list(PERIOD_OPTIONS.keys()), index=2)
+    if st.button("Зібрати та класифікувати"):
+        delta = PERIOD_OPTIONS[period_label]
+        since = datetime.now(timezone.utc) - delta if delta else None
+        with st.spinner("Збираємо нові повідомлення і класифікуємо через LUMI — це може зайняти кілька хвилин..."):
+            collect_result = run_collect()
+            classify_result = run_classify(since=since)
+        st.success(
+            f"Зібрано: {sum(collect_result['inserted'].values())} нових · "
+            f"Класифіковано: {classify_result['classified']} "
+            f"(болей знайдено: {classify_result['pains']})"
+        )
+        if collect_result["failed"]:
+            st.warning("Збої колекторів: " + "; ".join(collect_result["failed"]))
+        st.cache_data.clear()
+        st.rerun()
 
 # ── Load ──────────────────────────────────────────────────────────────────────
 df = load_data()

@@ -9,6 +9,12 @@ venv/
 .DS_Store
 .idea/
 .qodo/
-.claude/
+.claude/settings.local.json
 supabase/.temp/
 lumi-start-claude.sh
+
+# Дамп даних із Supabase для первинного наповнення БД на LUMI — великий,
+# не секретний, але не варто тягнути в git-історію. Завантажується вручну
+# через веб-UI LUMI (Файли) в корінь проєкту.
+raw_messages.csv.gz
+classified_pains.csv.gz

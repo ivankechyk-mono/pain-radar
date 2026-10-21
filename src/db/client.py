@@ -11,12 +11,19 @@ _conn = None
 def get_conn():
     global _conn
     if _conn is None or _conn.closed:
+        missing = [k for k in ("DB_HOST", "DB_NAME", "DB_USER", "DB_PASSWORD") if not os.environ.get(k)]
+        if missing:
+            raise RuntimeError(
+                f"Немає конфігу БД: {', '.join(missing)}. "
+                "Локально — заповни .env (див. .env.example). "
+                "У хмарі — додай ці змінні в секрети середовища."
+            )
         _conn = psycopg2.connect(
-            host=os.environ.get("DB_HOST", "localhost"),
-            port=int(os.environ.get("DB_PORT", 5434)),
-            dbname=os.environ.get("DB_NAME", "pain_radar"),
-            user=os.environ.get("DB_USER", "redbull1122"),
-            password=os.environ.get("DB_PASSWORD", ""),
+            host=os.environ["DB_HOST"],
+            port=int(os.environ.get("DB_PORT", 5432)),
+            dbname=os.environ["DB_NAME"],
+            user=os.environ["DB_USER"],
+            password=os.environ["DB_PASSWORD"],
         )
     return _conn
 
@@ -38,7 +45,7 @@ def insert_raw(messages: list[dict]) -> int:
     return inserted
 
 
-def get_unclassified_by_source(source: str, limit: int = 200) -> list[dict]:
+def get_unclassified_by_source(source: str, limit: int = 200, since=None) -> list[dict]:
     conn = get_conn()
     with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
         cur.execute("""
@@ -47,9 +54,10 @@ def get_unclassified_by_source(source: str, limit: int = 200) -> list[dict]:
             WHERE is_classified = FALSE
               AND source = %s
               AND length(body) >= 80
+              AND (%s::timestamptz IS NULL OR published_at >= %s)
             ORDER BY published_at DESC NULLS LAST
             LIMIT %s
-        """, (source, limit))
+        """, (source, since, since, limit))
         return [dict(r) for r in cur.fetchall()]
 
 

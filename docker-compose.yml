@@ -1,0 +1,50 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8501:8501"
+    environment:
+      PORT: "8501"
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_NAME: ${POSTGRES_DB:-pain_radar}
+      DB_USER: ${POSTGRES_USER:-pain_radar}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-pain_radar}
+      LUMI_API_KEY: ${LUMI_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      SCRAPECREATORS_API_KEY: ${SCRAPECREATORS_API_KEY:-}
+      TG_API_ID: ${TG_API_ID:-}
+      TG_API_HASH: ${TG_API_HASH:-}
+      TG_SESSION: ${TG_SESSION:-pain_radar}
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:$${PORT:-8501}/_stcore/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  db:
+    build:
+      context: .
+      dockerfile: db/Dockerfile
+    expose:
+      - "5432"
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-pain_radar}
+      POSTGRES_USER: ${POSTGRES_USER:-pain_radar}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pain_radar}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-pain_radar}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:
